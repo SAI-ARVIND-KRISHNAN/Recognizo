@@ -1,0 +1,59 @@
+<div class="page-wrapper">
+  <div class="video-wrapper">
+    <video #video autoplay muted></video>
+    <canvas #canvas></canvas>
+  </div>
+
+  <div class="upload-section">
+    <input type="file" (change)="onImageUpload($event)" accept="image/*" />
+  </div>  
+
+  <div class="controls">
+    <button class="btn start" (click)="startCamera()">Start</button>
+    <button class="btn stop" (click)="stopCamera()">Stop</button>
+  </div>
+
+  <section class="insights">
+    <h2>Realtime Face Insights</h2>
+    <div *ngIf="currentFaces$ | async as faces">
+      <div *ngIf="faces.length === 0">
+        <p>No faces detected</p>
+      </div>
+      <div *ngFor="let face of faces; let i = index" class="face-insight">
+        <h3>Face {{ i + 1 }}</h3>
+        <ul>
+          <li><strong>Age:</strong> {{ face.age }}</li>
+          <li><strong>Gender:</strong> {{ face.gender }} ({{ face.genderConfidence | number: '1.0-0' }}%)</li>
+          <li><strong>Emotion:</strong> {{ face.emotion }}</li>
+          <li><strong>Detected At:</strong> {{ face.timestamp | date:'shortTime' }}</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  
+
+  <section class="profiles">
+    <h2>Face Detection Profiles</h2>
+    <div class="profile-log" *ngIf="profiles$ | async as profiles">
+      <div class="profile-card" *ngFor="let profile of profiles | keyvalue">
+        <h3>ID: {{ profile.key }}</h3>
+        <ul>
+          <li><strong>Appearances:</strong> {{ profile.value.appearances }}</li>
+          <li><strong>Avg Age:</strong> {{ profile.value.avgAge }}</li>
+          <li><strong>Gender:</strong> {{ profile.value.gender }}</li>
+          <li><strong>Last Emotion:</strong> {{ profile.value.lastEmotion }}</li>
+          <li><strong>First Seen:</strong> {{ profile.value.firstSeen | date:'shortTime' }}</li>
+          <li><strong>Last Seen:</strong> {{ profile.value.lastSeen | date:'shortTime' }}</li>
+        </ul>
+        <div class="logs">
+          <p>Recent Logs:</p>
+          <ul>
+            <li *ngFor="let log of profile.value.logs">
+              {{ log.timestamp | date:'shortTime' }} | Age: {{ log.age }}, Gender: {{ log.gender }}, Emotion: {{ log.emotion }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
