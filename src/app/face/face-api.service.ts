@@ -6,6 +6,8 @@ import * as faceapi from '@vladmandic/face-api';
 })
 export class FaceApiService {
   private modelsLoaded = false;
+  private labeledDescriptors: faceapi.LabeledFaceDescriptors[] = [];
+  private faceMatcher?: faceapi.FaceMatcher;
 
   async loadModels(): Promise<void> {
     if (this.modelsLoaded) return;
@@ -17,19 +19,54 @@ export class FaceApiService {
       faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
 
     this.modelsLoaded = true;
-    console.log('✅ Models loaded from CDN (vladmandic)');
+    console.log('Models loaded from CDN (vladmandic)');
   }
-  
 
   async detect(video: HTMLVideoElement) {
     return await faceapi
       .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceExpressions()
-      .withAgeAndGender();
+      .withAgeAndGender()
+      .withFaceDescriptors();
+  }
+
+  async detectStatic(image: HTMLImageElement) {
+    return await faceapi
+      .detectAllFaces(image, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceExpressions()
+      .withAgeAndGender()
+      .withFaceDescriptors();
+  }
+  
+
+  assignFaceIds(detections: any[]): any[] {
+    if (!this.faceMatcher && this.labeledDescriptors.length > 0) {
+      this.faceMatcher = new faceapi.FaceMatcher(this.labeledDescriptors, 0.5);
+    }
+
+    return detections.map((det) => {
+      let faceId = '';
+
+      if (this.faceMatcher) {
+        const bestMatch = this.faceMatcher.findBestMatch(det.descriptor);
+        faceId = bestMatch.label !== 'unknown' ? bestMatch.label : '';
+      }
+
+      if (!faceId) {
+        faceId = `face-${Date.now()}`;
+        const newDescriptor = new faceapi.LabeledFaceDescriptors(faceId, [det.descriptor]);
+        this.labeledDescriptors.push(newDescriptor);
+        this.faceMatcher = new faceapi.FaceMatcher(this.labeledDescriptors, 0.5);
+      }
+
+      return { ...det, faceId };
+    });
   }
 
   resizeResults(results: any, dims: { width: number; height: number }) {
@@ -47,16 +84,17 @@ export class FaceApiService {
     faceapi.draw.drawFaceLandmarks(canvas, resizedResults);
 
     resizedResults.forEach((result: any) => {
-      const { age, gender, genderProbability } = result;
-      const { x, y } = result.detection.box;
+      const { age, gender, genderProbability, faceId } = result;
+      const { x, y, width } = result.detection.box;
 
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#00ff00';
-      ctx.fillText(
-        `${gender} (${Math.round(genderProbability * 100)}%) | Age: ${Math.round(age)}`,
-        x,
-        y - 10
-      );
+      const label = `${faceId} | ${gender} (${Math.round(genderProbability * 100)}%) | Age: ${Math.round(age)}`;
+
+      ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(x, y - 24, ctx.measureText(label).width + 10, 20);
+
+      ctx.fillStyle = 'white';
+      ctx.fillText(label, x + 5, y - 10);
     });
   }
 }
