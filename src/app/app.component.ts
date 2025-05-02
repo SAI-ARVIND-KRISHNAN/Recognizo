@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { WebcamComponent } from './webcam/webcam.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, WebcamComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
